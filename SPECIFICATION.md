@@ -144,6 +144,7 @@ class TestCase:
     id: str                 # e.g. "DEMO002"
     name: str
     steps: tuple[Step, ...]
+    description: str = ""               # optional; shown in UI and reports
     variables: dict[str, Any] = {}      # case-scoped, overlay suite vars
     skip_reason: str = ""               # non-empty ⇒ marked to skip
     test_setup: tuple[Step, ...] = ()   # case-specific, runs AFTER suite test_setup
@@ -212,6 +213,7 @@ yields `("", "free text")`). Order is preserved; rendered in both reports.
 test_cases:
   - id: DEMO002                 # REQUIRED, used for ordering & -t filter
     name: Human readable title # REQUIRED
+    description: ...           # optional; shown next to the case in the UI and reports
     skip:                      # optional; string OR { reason: ... }
       reason: https://jira.example/DEMO-42
     variables:                 # optional; case-scoped (overlay suite vars)
@@ -336,8 +338,8 @@ Every leaf step runs inside `try/except`. A handler that raises becomes an
 
 Before suite setup runs — the very first thing the operator sees on the
 session page — the engine asks once which of the suite's planned cases to
-actually run: `Prompter.select_cases(cases)`, given every `(id, name)` pair in
-execution order, returns the set of ids to run, or `None` to run all.
+actually run: `Prompter.select_cases(cases)`, given every `(id, name, description)`
+triple in suite order. Returns the set of ids to run, or `None` to run all.
 
 - **`WebPrompter`** renders this as a standalone card listing every case with
   a checkbox, **all checked by default**, plus *Select all* / *Select none*
@@ -533,13 +535,14 @@ class Prompter(Protocol):
         # yes/no; used by optional groups (default True) and skip (default False)
     def ask_artifact(self, label: str, error: str = "") -> str: ...
         # path to a file to attach; "" to skip; `error` shown when re-prompting
-    def select_cases(self, cases: Sequence[tuple[str, str]]) -> set[str] | None: ...
-        # called once, before suite setup; (id, name) pairs for every planned
-        # case; returns ids to run, or None to run all (ConsolePrompter always
-        # returns None — see §6.5)
-    def start_case(self, case_id: str, name: str, steps: Sequence[str]) -> bool: ...
-        # announce the next case + preview its step labels; True = run,
-        # False = skip (default True / EOF)
+    def select_cases(self, cases: Sequence[tuple[str, str, str]]) -> set[str] | None: ...
+        # called once, before suite setup; (id, name, description) triples for
+        # every planned case; returns ids to run, or None to run all
+        # (ConsolePrompter always returns None — see §6.5)
+    def start_case(self, case_id: str, name: str, steps: Sequence[str],
+                   description: str = "") -> bool: ...
+        # announce the next case + preview its step labels (and optional
+        # description); True = run, False = skip (default True / EOF)
     def review_case(self, case: TestCaseResult) -> CaseDecision: ...
         # PROCEED / REPEAT / STOP after a case finishes (STOP ends the
         # session early but still runs suite_teardown → report saved)
@@ -632,9 +635,10 @@ General Input/Output."
   delivers the answer — 204 on a match, 409 if `<id>` is not the pending prompt.
   Prompt kinds: `verdict` → `{verdict: pass|fail|ack, note}`; `input` →
   `{value}`; `confirm` → `{confirm}`; `select_cases` (carries `text` and
-  `cases: [{id, name}, …]` for every planned case, sent once before suite
-  setup) → `{selected: [id, …]}`; `start_case` (carries `case_id`, `name`,
-  `steps`) → `{run}`; `review` (carries the step results + overall `outcome`) →
+  `cases: [{id, name, description}, …]` for every planned case, sent once
+  before suite setup) → `{selected: [id, …]}`; `start_case` (carries
+  `case_id`, `name`, `description`, `steps`) → `{run}`; `review` (carries
+  the step results + overall `outcome`, plus `description`) →
   `{decision: proceed|repeat|stop}`. `ask_artifact` is a no-op in web mode
   (files come via `request_files`); `show_tool_output` streams to a channel
   named after the producer — a `tool` step's tool key (so each tool gets its own
@@ -759,6 +763,7 @@ the engine converts them to `ERROR`.
 `SuiteResult` → `cases: [TestCaseResult]` → `steps: [StepResult]`, plus
 `suite_setup`/`suite_teardown` step lists on the suite. All are
 JSON-serialisable via `to_dict()`. `TestCaseResult` also carries
+`description` (from the suite YAML) and
 `logs: [{"label","path"}]` — files attached to the case via `ctx.attach_log`
 (e.g. a per-test device log), paths relative to `artifacts_dir`.
 

@@ -47,6 +47,8 @@ suite:
 test_cases:
   - id: DEMO001
     name: Test dropdown selection by visible text [Programming Language]
+    description: >
+      This test case demonstrates fully automated testing of how to select an option from a dropdown by visible text.
     steps:
       - call: browser.select_by_text
         args:
@@ -64,6 +66,8 @@ test_cases:
 
   - id: DEMO002
     name: Test dropdown selection by value [Product Version]
+    description: >
+      This test case demonstrates partially automated testing of how to select an option from a dropdown by value.
     steps:
       - call: browser.select_by_value
         args:
@@ -73,8 +77,7 @@ test_cases:
       - call: browser.screenshot
         artifact: product version dropdown
         name: Attach a screenshot of the result
-      - call: browser.expect_text
-        args:
-          selector: "#statusProduct"
-          expected: "Selected: Release 2.1 (value: v2.1)"
+      - prompt: >
+          Verify that the statusProduct label updated correctly to "Selected: Release 2.1 (value: v2.1)".
+        artifact: product version dropdown
         name: "Assert the statusProduct label updated correctly (expected: Selected: Release 2.1 (value: v2.1))"

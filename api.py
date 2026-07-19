@@ -316,6 +316,8 @@ def _announce_plan(suite: Suite) -> None:
     items: list[str] = []
     for case in suite.test_cases:
         line = f"{case.id}  {case.name}"
+        if case.description.strip():
+            line += f" — {case.description.strip()}"
         if case.skip_reason:
             line += f"  [marked skip: {case.skip_reason}]"
         items.append(line)
@@ -548,7 +550,10 @@ def _planned_cases(suite_path: Path | str) -> list[dict]:
         SuiteValidationError: If the suite is missing or malformed.
     """
     suite = _load_suite(suite_path)
-    return [{"id": case.id, "name": case.name} for case in suite.test_cases]
+    return [
+        {"id": case.id, "name": case.name, "description": case.description}
+        for case in suite.test_cases
+    ]
 
 
 def _default_artifacts_dir(suite: Suite) -> Path:

@@ -114,7 +114,9 @@ class Prompter(Protocol):
         """
         ...
 
-    def select_cases(self, cases: Sequence[tuple[str, str]]) -> set[str] | None:
+    def select_cases(
+        self, cases: Sequence[tuple[str, str, str]]
+    ) -> set[str] | None:
         """Ask the operator which of the planned cases to run.
 
         Called once, before suite setup and any test case starts, with every
@@ -122,8 +124,8 @@ class Prompter(Protocol):
         ``-t``/``-k`` CLI selection).
 
         Args:
-            cases: ``(id, name)`` pairs for every planned case, in the order
-                they will run.
+            cases: ``(id, name, description)`` triples for every planned case,
+                in the order they will run. ``description`` may be empty.
 
         Returns:
             The set of case ids to run, or ``None`` to run all of them.
@@ -131,7 +133,13 @@ class Prompter(Protocol):
         """
         ...
 
-    def start_case(self, case_id: str, name: str, steps: Sequence[str]) -> bool:
+    def start_case(
+        self,
+        case_id: str,
+        name: str,
+        steps: Sequence[str],
+        description: str = "",
+    ) -> bool:
         """Announce the next test case and ask whether to run or skip it.
 
         Args:
@@ -139,6 +147,7 @@ class Prompter(Protocol):
             name: The test-case name.
             steps: Labels of the case's steps, shown so the operator can preview
                 what will run before confirming.
+            description: Optional free-text description of the case.
 
         Returns:
             ``True`` to run the case, ``False`` to skip it. Non-interactive
@@ -373,7 +382,9 @@ class ConsolePrompter:
         raw = self._readline()
         return "" if raw is None else raw.strip()
 
-    def select_cases(self, cases: Sequence[tuple[str, str]]) -> set[str] | None:
+    def select_cases(
+        self, cases: Sequence[tuple[str, str, str]]
+    ) -> set[str] | None:
         """Run every case; interactive case selection is a web-only feature.
 
         The console flow already prints the full plan before the run starts
@@ -389,7 +400,13 @@ class ConsolePrompter:
         """
         return None
 
-    def start_case(self, case_id: str, name: str, steps: Sequence[str]) -> bool:
+    def start_case(
+        self,
+        case_id: str,
+        name: str,
+        steps: Sequence[str],
+        description: str = "",
+    ) -> bool:
         """Announce the next case in a prominent banner; ask to run or skip.
 
         Lists the case's steps beneath the banner so the operator can preview
@@ -399,6 +416,7 @@ class ConsolePrompter:
             case_id: The test-case id.
             name: The test-case name.
             steps: Labels of the case's steps.
+            description: Optional free-text description of the case.
 
         Returns:
             ``True`` to run, ``False`` to skip. At EOF (non-interactive),
@@ -410,6 +428,8 @@ class ConsolePrompter:
         self._write(self._paint(f"┏{rule}┓", _BLUE))
         self._write(self._paint(f"┃{title}┃", _BLUE))
         self._write(self._paint(f"┗{rule}┛", _BLUE))
+        if description.strip():
+            self._write(self._paint(f"  {description.strip()}", _DIM))
         if steps:
             self._write(self._paint("  Steps:", _BLUE))
             field = len(str(len(steps)))
@@ -452,6 +472,8 @@ class ConsolePrompter:
         self._write("")
         header = f"\u2500\u2500 {case.id}  {case.name} \u2500\u2500"
         self._write(self._paint(header, _BLUE))
+        if case.description.strip():
+            self._write(self._paint(f"  {case.description.strip()}", _DIM))
         for step in case.steps:
             self._write(self._format_step_line(step))
         overall = self._paint(

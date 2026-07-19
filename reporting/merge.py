@@ -591,11 +591,11 @@ def _merge_description(rebased: list[tuple[Path, dict[str, Any]]]) -> str:
 def _untested_case(planned: dict[str, Any]) -> dict[str, Any]:
     """Build a case-result mapping for a planned case that was never run.
 
-    Only the id and name are populated; a case that never ran has no step
+    Id, name, and description are populated; a case that never ran has no step
     results to show.
 
     Args:
-        planned: A ``{"id", "name"}`` mapping.
+        planned: A ``{"id", "name", "description"}`` mapping.
 
     Returns:
         A case mapping with outcome :data:`UNTESTED` and no steps.
@@ -603,6 +603,7 @@ def _untested_case(planned: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(planned.get("id", "")),
         "name": str(planned.get("name", "")),
+        "description": str(planned.get("description", "")),
         "outcome": UNTESTED,
         "skip_reason": "",
         "started_at": "",

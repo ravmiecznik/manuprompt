@@ -166,7 +166,9 @@ class Engine:
         """
         if not cases:
             return frozenset()
-        selected = self.prompter.select_cases([(c.id, c.name) for c in cases])
+        selected = self.prompter.select_cases(
+            [(c.id, c.name, c.description) for c in cases]
+        )
         if selected is None:
             return frozenset()
         return frozenset(c.id for c in cases if c.id not in selected)
@@ -199,7 +201,12 @@ class Engine:
             return False
 
         if suite_aborted:
-            case_result = TestCaseResult(id=case.id, name=case.name, started_at=now_iso())
+            case_result = TestCaseResult(
+                id=case.id,
+                name=case.name,
+                description=case.description,
+                started_at=now_iso(),
+            )
             self._result.cases.append(case_result)
             self._persist()
             self._skip_steps(case.steps, "step", case_result.steps, "suite setup failed")
@@ -213,7 +220,10 @@ class Engine:
                 self._skip_case(case, case.skip_reason)
                 return False
         elif not self.prompter.start_case(
-            case.id, case.name, [step.name for step in case.steps]
+            case.id,
+            case.name,
+            [step.name for step in case.steps],
+            description=case.description,
         ):
             # Otherwise announce the next case and let the operator skip it.
             self._skip_case(case, "skipped by operator")
@@ -223,7 +233,12 @@ class Engine:
         # A repeated attempt discards the previous one so only the accepted
         # attempt remains in the result.
         while True:
-            case_result = TestCaseResult(id=case.id, name=case.name, started_at=now_iso())
+            case_result = TestCaseResult(
+                id=case.id,
+                name=case.name,
+                description=case.description,
+                started_at=now_iso(),
+            )
             self._result.cases.append(case_result)
             # Begin publishing this attempt's live step list to the session page.
             self._begin_session(case, case_result)
@@ -299,7 +314,11 @@ class Engine:
         assert self._result is not None
         self.logger.info("Skipping test case %s: %s", case.id, reason)
         case_result = TestCaseResult(
-            id=case.id, name=case.name, skip_reason=reason, started_at=now_iso()
+            id=case.id,
+            name=case.name,
+            description=case.description,
+            skip_reason=reason,
+            started_at=now_iso(),
         )
         self._result.cases.append(case_result)
         self._persist()
@@ -805,7 +824,11 @@ class Engine:
             steps.append(entry)
         gio.set_session(
             {
-                "case": {"id": case.id, "name": case.name},
+                "case": {
+                    "id": case.id,
+                    "name": case.name,
+                    "description": case.description,
+                },
                 "phase": self._active_phase,
                 "steps": steps,
             }
