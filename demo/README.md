@@ -12,17 +12,21 @@ long as those two things are available (see "Requirements" below).
 | File | Role |
 |------|------|
 | `demo-suite.yml` | The suite: setup/teardown, two test cases mixing `call:` and `prompt:` steps. |
-| `browser.py` | Playwright glue driven via `call: browser.*` — launches Chromium (optional session video), drives the page, returns screenshot/video paths. No Selenium, no project dependency. |
+| `browser.py` | Playwright glue driven via `call: browser.*` — launches Chromium (optional session video + live page-console stream persisted as an artifact), drives the page, returns screenshot/video/console-log paths. No Selenium, no project dependency. |
 
 The suite exercises: launching a browser and opening a page
-(`call: browser.launch` with `record_video: true`), selecting a `<select>`
-option by its visible text (`select_by_text`) and separately by its `value`
-attribute (`select_by_value`), an automated assertion on the page's own status
-label (`expect_text`, a `call:` step that fails the step when the check doesn't
-hold), screenshot steps with explicit `artifact:` labels (glue returns the PNG
-path; the engine attaches it), an operator `prompt:` verdict, and suite
-teardown that stops the Playwright recording (`browser.stop_video` +
-`artifact:`) so the `.webm` appears in the report.
+(`call: browser.launch` with `record_video: true` and `stream_console: true`),
+selecting a `<select>` option by its visible text (`select_by_text`) and
+separately by its `value` attribute (`select_by_value`), an automated
+assertion on the page's own status label (`expect_text`, a `call:` step that
+fails the step when the check doesn't hold), screenshot steps with explicit
+`artifact:` labels (glue returns the PNG path; the engine attaches it), an
+operator `prompt:` verdict, and suite teardown that attaches the captured
+page console log (`browser.stop_console` + `artifact:`) and stops the
+Playwright recording (`browser.stop_video` + `artifact:`) so both appear in
+the report. With `stream_console`, page `console.*` messages and uncaught JS
+exceptions are written to `browser-console.log` and also appear live on the
+WebGIO **browser console** tab.
 
 ## Requirements
 

@@ -481,9 +481,13 @@ suite:
         url: ${playground_url}
         headless: true
         record_video: true
+        stream_console: true
       name: Launch Chromium and open the playground page
 
   suite_teardown:
+    - call: browser.stop_console
+      artifact: browser console
+      name: Attach the captured page console log
     - call: browser.stop_video
       artifact: session recording
       name: Stop browser video recording and attach it
