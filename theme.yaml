@@ -1,0 +1,59 @@
+# Project-wide colour/font theme for the manuprompt web UI and the
+# HTML/Markdown report. Lives next to theme.py (this tool's own root — see
+# demo/README.md for why the whole checkout is expected to live at your
+# project's root), so it applies to every suite you run from here.
+#
+# This file defines a few named presets below; `apply:` at the bottom picks
+# which one is active — switch themes by editing just that line. (A theme
+# file may also skip presets and set the fields directly at the top level
+# instead — see docs/WRITING_SUITES.md.)
+#
+# Every field is optional; unset fields keep each surface's own default look
+# (dark terminal console for the web UI, light document for the report). A
+# suite may still override individual fields for itself via its own `theme:`
+# block in the suite YAML — see docs/WRITING_SUITES.md for the full field
+# list and how fonts are resolved (a plain CSS font-family fallback stack,
+# no embedded fonts or web-font requests).
+#
+# Delete this file (or leave it empty) to fall back to the built-in look.
+
+green:
+  background: "#132420"
+  surface: "#1d3630"
+  foreground: "#e6f2ec"
+  muted: "#a3c2b6"
+  border: "#2f4f47"
+  accent: "#3ecf9a"
+  success: "#7bd957"
+  danger: "#e0645c"
+  warning: "#d9c46a"
+  font_family: "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif"
+  mono_font_family: "SF Mono, Menlo, Cascadia Code, Consolas, monospace"
+
+blue:
+  background: "#0f1a2b"
+  surface: "#16243b"
+  foreground: "#e6edf5"
+  muted: "#8fa3c2"
+  border: "#28405f"
+  accent: "#4d9dff"
+  success: "#5fd97f"
+  danger: "#ea6a6a"
+  warning: "#e0b84d"
+  font_family: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
+  mono_font_family: "Consolas, Cascadia Code, Menlo, monospace"
+
+solarized:
+  background: "#002b36"
+  surface: "#073642"
+  foreground: "#93a1a1"
+  muted: "#657b83"
+  border: "#586e75"
+  accent: "#268bd2"
+  success: "#859900"
+  danger: "#dc322f"
+  warning: "#b58900"
+  font_family: "Georgia, Cambria, Times New Roman, Times, serif"
+  mono_font_family: "Menlo, Monaco, Consolas, monospace"
+
+apply: green

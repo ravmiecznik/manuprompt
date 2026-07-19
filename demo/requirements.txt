@@ -1,0 +1,4 @@
+# Demo-only dependency (the core manuprompt package has none beyond
+# PyYAML). After installing, download the browser binary once:
+#   playwright install chromium
+playwright==1.61.0

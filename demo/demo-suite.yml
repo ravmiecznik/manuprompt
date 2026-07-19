@@ -1,0 +1,80 @@
+# ManuPrompt demo suite — Playwright-driven web UI testing.
+#
+#   * `call: browser.*` -> real browser automation (demo/browser.py) driving
+#                           a public dropdown-testing page with Playwright:
+#                           http://uitestingplayground.com/select
+#   * `prompt:`          -> operator verdict, given a screenshot to eyeball.
+#
+# Requires network access and Playwright's Chromium browser — see
+# demo/README.md for the two install steps.
+#
+# Run it from the parent directory of this checkout (see demo/README.md):
+#   python -m manuprompt manuprompt/demo/demo-suite.yml           # browser
+#   python -m manuprompt --cli-mode manuprompt/demo/demo-suite.yml # terminal
+
+suite:
+  name: ManuPrompt Demo (Playwright Web UI)
+  web_title: ManuPrompt Demo
+  description: >
+    A self-contained tour of ManuPrompt driving a real browser with
+    Playwright against a public dropdown-testing page: automated selection
+    and assertion steps, then an operator verdict on a screenshot.
+
+  test_environment:
+    Target: http://uitestingplayground.com/select
+    Tester: demo
+
+  variables:
+    playground_url: http://uitestingplayground.com/select
+
+  suite_setup:
+    - call: browser.launch
+      args:
+        url: ${playground_url}
+        headless: false # set to false to watch Chromium drive the page
+        record_video: true
+      name: Launch Chromium and open the playground page
+
+  suite_teardown:
+    - call: browser.stop_video
+      artifact: session recording
+      name: Stop browser video recording and attach it
+    - prompt: >
+        Demo finished. Click "Stop & save report" (or proceed) to view and
+        download the report.
+      name: Wrap up the demo
+
+test_cases:
+  - id: DEMO001
+    name: Test dropdown selection by visible text [Programming Language]
+    steps:
+      - call: browser.select_by_text
+        args:
+          selector: "#selectLanguage"
+          text: Python
+        name: Select "Python" in the Language dropdown (select by text)
+      - call: browser.expect_text
+        args:
+          selector: "#statusLanguage"
+          expected: "Selected: Python (value: py)"
+        name: "Assert the statusLanguage label updated correctly (expected: Selected: Python (value: py))"
+      - call: browser.screenshot
+        artifact: language dropdown
+        name: Attach a screenshot of the result
+
+  - id: DEMO002
+    name: Test dropdown selection by value [Product Version]
+    steps:
+      - call: browser.select_by_value
+        args:
+          selector: "#selectProduct"
+          value: v2.1
+        name: Select value "v2.1" in the Product Version dropdown (select by value)
+      - call: browser.screenshot
+        artifact: product version dropdown
+        name: Attach a screenshot of the result
+      - call: browser.expect_text
+        args:
+          selector: "#statusProduct"
+          expected: "Selected: Release 2.1 (value: v2.1)"
+        name: "Assert the statusProduct label updated correctly (expected: Selected: Release 2.1 (value: v2.1))"
