@@ -8,16 +8,18 @@ this demo has (see ``demo/README.md`` for install steps).
 
 The demo suite invokes these functions with ``call: browser.<function>``. Each
 receives the run context (``ctx``) and uses only its public, domain-agnostic
-API: ``ctx.resources`` (run-scoped object store) and ``ctx.add_teardown``
-(cleanup). Screenshots (and the session video) are returned as file paths; the
-suite YAML's ``artifact:`` label is what attaches them to the step in the
-report.
+API: ``ctx.resources`` (run-scoped object store), ``ctx.add_teardown``
+(cleanup), and optionally ``ctx.web_gio`` (live console stream). Screenshots,
+the session video, and the captured browser console log are returned as file
+paths; the suite YAML's ``artifact:`` label is what attaches them to the step
+in the report.
 """
 
 from __future__ import annotations
 
 import os
 import tempfile
+import threading
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -26,7 +28,13 @@ from playwright.sync_api import sync_playwright
 _PAGE_KEY = "playwright_page"
 _CONTEXT_KEY = "playwright_context"
 _VIDEO_KEY = "playwright_video"
+_CONSOLE_PATH_KEY = "playwright_console_path"
+_CONSOLE_FILE_KEY = "playwright_console_file"
 
+# WebGIO channel / artifact stem for page console / pageerror capture when
+# ``stream_console`` is enabled on :func:`launch`.
+_CONSOLE_CHANNEL = "browser console"
+_CONSOLE_LOG_NAME = "browser-console.log"
 
 # Default capture size when recording. Playwright otherwise scales the
 # viewport down to fit 800x800, which makes on-page text hard to read.
@@ -39,6 +47,7 @@ def launch(
     headless: bool = True,
     record_video: bool = False,
     video_size: dict | None = None,
+    stream_console: bool = True,
 ) -> None:
     """Start Chromium, open ``url``, and cache the page for later steps.
 
@@ -48,6 +57,13 @@ def launch(
 
     Recording uses a fixed viewport and matching ``record_video_size`` (default
     1920×1080) so the video is not downscaled to Playwright's 800×800 default.
+
+    When ``stream_console`` is true, page ``console.*`` messages and uncaught
+    JS exceptions are written to ``browser-console.log`` under the run's
+    artifacts directory. Call :func:`stop_console` in suite teardown (with an
+    ``artifact:`` label) to attach that file. The same lines are also streamed
+    live to a WebGIO channel named ``browser console`` when ``ctx.web_gio`` is
+    available.
 
     Registers teardown to close the context/browser and stop Playwright when
     the run ends (including on error or operator stop).
@@ -60,6 +76,8 @@ def launch(
         record_video: Enable Playwright context video recording.
         video_size: Optional ``{width, height}`` for viewport and video
             resolution when recording (defaults to 1920×1080).
+        stream_console: Capture page console / pageerror events to a log file
+            (and stream them to WebGIO when the web surface is enabled).
     """
     playwright = sync_playwright().start()
     browser = playwright.chromium.launch(headless=headless)
@@ -79,6 +97,8 @@ def launch(
 
     context = browser.new_context(**context_kwargs)
     page = context.new_page()
+    if stream_console:
+        _attach_console_stream(ctx, page)
     page.goto(url)
 
     ctx.resources[_PAGE_KEY] = page
@@ -93,12 +113,86 @@ def launch(
     ctx.add_teardown(browser.close)
     ctx.add_teardown(lambda: _close_context(ctx))
     ctx.logger.info(
-        "Opened %s (headless=%s, record_video=%s%s)",
+        "Opened %s (headless=%s, record_video=%s, stream_console=%s%s)",
         url,
         headless,
         record_video,
+        stream_console,
         f", size={size['width']}x{size['height']}" if record_video else "",
     )
+
+
+def _attach_console_stream(ctx, page) -> None:
+    """Capture Playwright console / pageerror events to a file and WebGIO.
+
+    Always writes ``browser-console.log`` under the run's artifacts directory.
+    When ``ctx.web_gio`` is available, the same lines are streamed to a live
+    channel. Handlers may run on Playwright's own threads; writes are
+    lock-guarded.
+
+    Args:
+        ctx: The run context.
+        page: The Playwright page to listen on.
+    """
+    log_path = Path(ctx.artifacts_dir) / _CONSOLE_LOG_NAME
+    log_file = open(log_path, "w", encoding="utf-8")  # noqa: SIM115
+    ctx.resources[_CONSOLE_PATH_KEY] = log_path
+    ctx.resources[_CONSOLE_FILE_KEY] = log_file
+    ctx.add_teardown(lambda: _close_console_file(ctx))
+
+    channel = ctx.web_gio.channel(_CONSOLE_CHANNEL) if ctx.web_gio is not None else None
+    lock = threading.Lock()
+
+    def _emit(line: str) -> None:
+        with lock:
+            log_file.write(line)
+            log_file.flush()
+            if channel is not None:
+                channel.write(line)
+
+    def _on_console(msg) -> None:
+        loc = msg.location
+        where = ""
+        if loc and loc.get("url"):
+            line = loc.get("lineNumber")
+            where = f" ({loc['url']}"
+            if line is not None:
+                where += f":{line}"
+            where += ")"
+        _emit(f"[{msg.type}] {msg.text}{where}\n")
+
+    def _on_pageerror(err) -> None:
+        _emit(f"[pageerror] {err}\n")
+
+    page.on("console", _on_console)
+    page.on("pageerror", _on_pageerror)
+    _emit("(listening for page console / pageerror)\n")
+
+
+def stop_console(ctx) -> str:
+    """Finalize the captured console log and return its path.
+
+    Flushes and closes the log file started by :func:`launch` with
+    ``stream_console: true``. The suite should declare ``artifact:`` on this
+    step so the returned file is attached to the report.
+
+    Args:
+        ctx: The run context.
+
+    Returns:
+        Path to the captured ``browser-console.log`` file.
+
+    Raises:
+        RuntimeError: If :func:`launch` was not called with ``stream_console``.
+    """
+    path = ctx.resources.get(_CONSOLE_PATH_KEY)
+    if path is None:
+        raise RuntimeError(
+            "No console capture; call browser.launch with stream_console: true first"
+        )
+    _close_console_file(ctx)
+    ctx.logger.info("Stopped console capture -> %s", path)
+    return str(path)
 
 
 def stop_video(ctx) -> str:
@@ -129,6 +223,13 @@ def stop_video(ctx) -> str:
     ctx.resources.pop(_VIDEO_KEY, None)
     ctx.logger.info("Stopped video recording -> %s", path)
     return str(path)
+
+
+def _close_console_file(ctx) -> None:
+    """Close the console log file handle if still open."""
+    handle = ctx.resources.pop(_CONSOLE_FILE_KEY, None)
+    if handle is not None and not handle.closed:
+        handle.close()
 
 
 def _close_context(ctx) -> None:
