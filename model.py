@@ -140,6 +140,8 @@ class TestCase:
         id: Stable identifier (e.g. ``DEMO001``).
         name: Human-readable title.
         steps: Ordered steps to execute.
+        description: Free-text description shown next to the case in the UI
+            and in reports.
         variables: Case-scoped variables, overlaid on the suite variables
             for the duration of the case.
         skip_reason: When set, the case is marked to be skipped; the operator
@@ -154,6 +156,7 @@ class TestCase:
     id: str
     name: str
     steps: tuple[Step, ...]
+    description: str = ""
     variables: dict[str, Any] = field(default_factory=dict)
     skip_reason: str = ""
     test_setup: tuple[Step, ...] = ()

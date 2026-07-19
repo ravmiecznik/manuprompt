@@ -99,6 +99,9 @@ def _case_section(case: dict[str, Any]) -> list[str]:
         f"— {_outcome_label(case.get('outcome', 'skip'))}"
     )
     lines = [heading, ""]
+    description = str(case.get("description") or "").strip()
+    if description:
+        lines += [_esc(description), ""]
     reason = str(case.get("skip_reason") or "").strip()
     if reason:
         lines += [f"> **Skipped:** {_esc(reason)}", ""]

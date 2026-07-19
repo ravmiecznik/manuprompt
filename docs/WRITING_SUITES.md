@@ -214,6 +214,7 @@ Each entry:
 |---|---|---|---|
 | `id` | **yes** | string | Case identifier (e.g. `DEMO002`). Used for sort order and the `-t`/`-k` CLI filters. |
 | `name` | no | string | Human-readable title (falls back to `id` if omitted). |
+| `description` | no | string | Free text shown next to the case in the UI and in reports. |
 | `steps` | **yes**, non-empty | list of steps | The case body. |
 | `skip` | no | string, or mapping with `reason` | Marks the case to be skipped by default (see below). |
 | `variables` | no | mapping | Case-scoped variables; overlay/override suite `variables` for this case only. |
@@ -224,6 +225,9 @@ Each entry:
 test_cases:
   - id: DEMO002
     name: Test dropdown selection by value
+    description: >
+      Partially automated check that selecting a product version by value
+      updates the status label.
     skip:
       reason: https://jira.example/DEMO-42   # a bare string works too: `skip: some reason`
     variables:

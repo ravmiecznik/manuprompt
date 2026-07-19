@@ -114,14 +114,17 @@ class WebPrompter:
         """
         return ""
 
-    def select_cases(self, cases: Sequence[tuple[str, str]]) -> set[str] | None:
+    def select_cases(
+        self, cases: Sequence[tuple[str, str, str]]
+    ) -> set[str] | None:
         """Show every planned case and let the operator choose which to run.
 
         Rendered as a standalone card on the session page with one checkbox
         per case (all checked by default) and a button to start the run.
 
         Args:
-            cases: ``(id, name)`` pairs for every planned case, in order.
+            cases: ``(id, name, description)`` triples for every planned case,
+                in order.
 
         Returns:
             The selected case ids, or ``None`` (run all) if the surface stops
@@ -131,7 +134,10 @@ class WebPrompter:
             "select_cases",
             {
                 "text": f"{len(cases)} test case(s) planned. Choose which to run:",
-                "cases": [{"id": case_id, "name": name} for case_id, name in cases],
+                "cases": [
+                    {"id": case_id, "name": name, "description": description}
+                    for case_id, name, description in cases
+                ],
             },
         )
         if answer is None:
@@ -141,13 +147,20 @@ class WebPrompter:
             return None
         return {str(item) for item in selected}
 
-    def start_case(self, case_id: str, name: str, steps: Sequence[str]) -> bool:
+    def start_case(
+        self,
+        case_id: str,
+        name: str,
+        steps: Sequence[str],
+        description: str = "",
+    ) -> bool:
         """Announce the next test case and ask whether to run or skip it.
 
         Args:
             case_id: The test-case id.
             name: The test-case name.
             steps: Labels of the case's steps, shown as a preview.
+            description: Optional free-text description of the case.
 
         Returns:
             ``True`` to run the case, ``False`` to skip it. Defaults to ``True``
@@ -155,7 +168,12 @@ class WebPrompter:
         """
         answer = self._gio.ask(
             "start_case",
-            {"case_id": case_id, "name": name, "steps": list(steps)},
+            {
+                "case_id": case_id,
+                "name": name,
+                "description": description,
+                "steps": list(steps),
+            },
         )
         if answer is None:
             return True
@@ -176,6 +194,7 @@ class WebPrompter:
             {
                 "case_id": case.id,
                 "name": case.name,
+                "description": case.description,
                 "outcome": case.outcome.value,
                 "steps": [self._step_view(step) for step in case.steps],
             },

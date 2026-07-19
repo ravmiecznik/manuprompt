@@ -41,7 +41,7 @@ $theme_vars
   h2 { margin: 1.5rem 0 .25rem; }
   details.case { margin: .35rem 0; border-bottom: 1px solid var(--border); }
   details.case > summary { list-style: none; cursor: pointer; padding: .45rem .25rem;
-           font-size: 1.15rem; font-weight: 600; display: flex; align-items: center;
+           font-size: 1.15rem; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center;
            gap: .5rem; border-radius: .3rem; }
   details.case > summary:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
   details.case > summary::-webkit-details-marker { display: none; }
@@ -51,7 +51,9 @@ $theme_vars
   details.case > summary .case-id { font-family: var(--mono-font);
            font-weight: 700; }
   details.case > summary .case-name { font-weight: 600; }
-  .case-head { display: flex; align-items: center; gap: .5rem; padding: .45rem .25rem;
+  .case-desc { flex: 1 0 100%; color: var(--muted); margin: 0 0 0 1.5rem; font-size: .9rem;
+           font-weight: 400; }
+  .case-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .45rem .25rem;
            margin: .35rem 0; font-size: 1.15rem; border-bottom: 1px solid var(--border); }
   .case-head::before { content: "\\2014"; color: var(--muted); width: 1em; flex: 0 0 auto;
            text-align: center; }
@@ -237,6 +239,9 @@ def _case_section(case: dict[str, Any], base_dir: Path) -> str:
         f"<span class='case-name'>{_esc(case.get('name', ''))}</span> "
         f"{_badge(case.get('outcome', 'skip'))}"
     )
+    description = str(case.get("description") or "").strip()
+    if description:
+        summary += f"<span class='case-desc'>{_esc(description)}</span>"
     reason = str(case.get("skip_reason") or "").strip()
     reason_html = (
         f"<p class='skip-reason'>Skipped: {_linkify(reason)}</p>\n" if reason else ""

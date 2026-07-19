@@ -125,6 +125,7 @@ class TestCaseResult:
     Attributes:
         id: Test-case identifier.
         name: Test-case title.
+        description: Free-text description from the suite YAML.
         steps: Per-step results, including setup/teardown steps tagged by
             their ``phase``.
         skip_reason: Reason the case was skipped, or empty when it ran.
@@ -138,6 +139,7 @@ class TestCaseResult:
 
     id: str
     name: str
+    description: str = ""
     steps: list[StepResult] = field(default_factory=list)
     skip_reason: str = ""
     logs: list[dict[str, Any]] = field(default_factory=list)
@@ -154,6 +156,7 @@ class TestCaseResult:
         return {
             "id": self.id,
             "name": self.name,
+            "description": self.description,
             "outcome": self.outcome.value,
             "skip_reason": self.skip_reason,
             "logs": [dict(entry) for entry in self.logs],

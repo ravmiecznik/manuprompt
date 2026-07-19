@@ -249,6 +249,7 @@ def _parse_case(raw: Any, index: int) -> TestCase:
     if not isinstance(case_id, str) or not case_id.strip():
         raise SuiteValidationError(f"test_cases[{index}].id is required")
     name = str(raw.get("name", case_id) or case_id)
+    description = str(raw.get("description", "") or "")
     location = f"test_cases[{index}] ({case_id})"
     steps = _parse_steps(raw.get("steps"), f"{location}.steps")
     if not steps:
@@ -261,6 +262,7 @@ def _parse_case(raw: Any, index: int) -> TestCase:
         id=case_id,
         name=name,
         steps=steps,
+        description=description,
         variables=variables,
         skip_reason=skip_reason,
         test_setup=test_setup,

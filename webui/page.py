@@ -559,6 +559,8 @@ $chrome_css
   #split:hover, #split.dragging { background: color-mix(in srgb, var(--accent) 40%, transparent); }
   #idlecase { color: var(--muted); padding: 8px; }
   #casetitle { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  #casedesc { font-size: 12px; color: var(--muted); margin: 0 0 8px; white-space: pre-wrap; }
+  #casedesc:empty { display: none; }
   #phasebar { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
   ol#steplist { list-style: none; margin: 0; padding: 0; }
   #steplist li {
@@ -642,9 +644,12 @@ $chrome_css
   .tag.ack { background: color-mix(in srgb, var(--warning) 25%, var(--bg) 75%); color: var(--warning); }
   .tag.skip { background: color-mix(in srgb, var(--surface) 50%, var(--border) 50%); color: var(--muted); }
   .caselist { list-style: none; margin: 0; padding: 0; font-size: 13px;
-              max-height: 280px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
-  .caserow { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
-  .card .caserow input { flex: 0 0 auto; width: auto; }
+              max-height: 280px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .caserow { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; cursor: pointer; }
+  .card .caserow input { flex: 0 0 auto; width: auto; margin-top: 2px; }
+  .caserow .casemeta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .caserow .casedesc { color: var(--muted); font-size: 12px; white-space: pre-wrap; }
+  .card .desc { color: var(--muted); font-size: 13px; margin: 4px 0 8px; white-space: pre-wrap; }
   a.btnlink {
     background: color-mix(in srgb, var(--success) 70%, black 30%);
     border: 1px solid var(--success); color: #fff;
@@ -676,6 +681,7 @@ $chrome_css
     <div id="idlecase">No test running. This panel shows the current test's steps and moves the highlight as it runs.</div>
     <div id="casebox" style="display:none">
       <h2 id="casetitle"></h2>
+      <div id="casedesc"></div>
       <div id="phasebar"></div>
       <ol id="steplist"></ol>
     </div>
@@ -692,6 +698,7 @@ const statusEl = document.getElementById('status');
 const idleCase = document.getElementById('idlecase');
 const caseBox = document.getElementById('casebox');
 const caseTitle = document.getElementById('casetitle');
+const caseDesc = document.getElementById('casedesc');
 const phaseBar = document.getElementById('phasebar');
 const stepList = document.getElementById('steplist');
 const cardZone = document.getElementById('cardzone');
@@ -763,6 +770,11 @@ function buildCard(p) {
     const title = document.createElement('div');
     title.className = 'text'; title.textContent = p.case_id + '  ' + p.name;
     card.appendChild(title);
+    if (p.description) {
+      const desc = document.createElement('div');
+      desc.className = 'desc'; desc.textContent = p.description;
+      card.appendChild(desc);
+    }
   }
   if (p.text) {
     const text = document.createElement('div');
@@ -810,8 +822,15 @@ function buildCard(p) {
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = true; cb.value = c.id;
       boxes.push(cb);
+      const meta = document.createElement('span'); meta.className = 'casemeta';
       const label = document.createElement('span'); label.textContent = c.id + '  ' + c.name;
-      row.appendChild(cb); row.appendChild(label);
+      meta.appendChild(label);
+      if (c.description) {
+        const desc = document.createElement('span');
+        desc.className = 'casedesc'; desc.textContent = c.description;
+        meta.appendChild(desc);
+      }
+      row.appendChild(cb); row.appendChild(meta);
       list.appendChild(row);
     }
     card.appendChild(list);
@@ -839,6 +858,7 @@ function renderSteps(state, prompt) {
   const cid = state.case ? state.case.id : '';
   if (cid !== expandedCase) { expanded = new Set(); expandedCase = cid; }
   caseTitle.textContent = state.case ? (state.case.id + '  ' + state.case.name) : '';
+  caseDesc.textContent = (state.case && state.case.description) ? state.case.description : '';
   phaseBar.textContent = PHASES[state.phase] || '';
   stepList.textContent = '';
   const stepKind = prompt && (prompt.kind === 'verdict' || prompt.kind === 'input' || prompt.kind === 'confirm');
